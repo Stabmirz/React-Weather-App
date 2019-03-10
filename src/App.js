@@ -1,200 +1,267 @@
-import React, { Component } from 'react';
-import { Link } from "react-router-dom";
+import React from "react";
+import ReactDOM from 'react-dom';
+// import { BrowserRouter as Router, Route, Link } from "react-router-dom";
+import axios from 'axios';
 import './App.css';
-import Form from "./components/Form";
-import Location from "./components/Location";
-import Description from "./components/Description";
-import WeatherData from "./components/WeatherData";
-import MaxMinTemp from "./components/MaxMinTemp";
-import Icon from './components/Icon';
 
-
-const Titles = () => (
-	<div>
-		<h1>5 days Weather Forecast</h1>
-	</div>
-);
-
-function WeatherByDay(){
-  return(
-    <div className="weather-by-day">
-      <i className='fa fa-cloud-sun'></i>
-      <p className="temperature">
-        <span className="high"> 86°C</span>
-        <span className="low"> 66°C</span>
-      </p>
-    </div>
-  );
-}
-
-function HourlyDetails(){
-  return(
-    <div className="table">
-      <div className="place-hour">
-        <p>Miami, FL Hourly Weather</p>
-        <p className="time">8:30 pm EST</p>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <td>
-              Time
-            </td>
-            <td>
-              Description
-            </td>
-            <td>
-              Temperature
-            </td>
-            <td>
-              Humidity
-            </td>
-            <td>
-              Wind
-            </td>
-            <td>
-              Pressure
-            </td>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>9:00 PM Wed</td>
-            <td>Clear</td>
-            <td> 
-              <span className="high"> 86°C</span>
-              <span className="low"> 66°C</span>
-            </td>
-            <td> 
-              <span className="high"> 0%</span>
-              <span className="low"> 66%</span>
-            </td>
-            <td>2 mph</td>
-            <td>95 kpa</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-
-const API_KEY = "b292bd2a578c27b2e97bbb03b7515a95";
-
-class App extends Component {
-  state = {
-    temperature: undefined,
-    max_temperature: undefined,
-    min_temperature: undefined,
-    city: undefined,
-    country: undefined,
-    humidity: undefined,
-    description: undefined,
-    wind: undefined,
-    pressure: undefined,
-    icon: undefined,
-    error: undefined
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      data: {},
+      location: "Miami",
+      days: [],
+      daysFull: [],
+      temps: [],
+      minTemps: [],
+      maxTemps: [],
+      c_humidity: [],
+      c_pressure: [],
+      c_wind: [],
+      weather: [],
+      icons: [],
+      displayIndex: 0
+    };
   }
 
-  getWeather = async (e) => {
+  fetchData = () => {
+    const url = this.buildUrlApi();
+    //console.log("api", url);
+
+    axios.get(url).then(response => {
+      this.setState({
+        data: response.data
+      });
+
+      const currentData = this.currentData();
+      const dayOfWeek = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
+      const dayOfWeekFull = [
+        "Saturday",
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday"
+      ];
+      const currentDay = "Today";
+      const currentDayFull =
+        dayOfWeekFull[new Date(currentData.dt_txt).getDay()];
+      const currentTemp = Math.round(currentData.main.temp);
+      const currentMinTemp = Math.round(currentData.main.temp_min);
+      const currentMaxTemp = Math.round(currentData.main.temp_max);
+      const currentHumidity = Math.round(currentData.main.humidity);
+      const currentPressure = Math.round(currentData.main.pressure);
+      const currentWind = Math.round(currentData.wind.speed);
+      const currentWeather = currentData.weather[0].description;
+      const currentIcon = currentData.weather[0].icon;
+
+      const days = [];
+      const daysFull = [];
+      const temps = [];
+      const minTemps = [];
+      const maxTemps = [];
+      const c_humidity = [];
+      const c_pressure = [];
+      const c_wind = [];
+      const weather = [];
+      const icons = [];
+      for (let i = 0; i < this.state.data.list.length; i = i + 1) {
+        let date = new Date(this.state.data.list[i].dt_txt);
+        let day = dayOfWeek[date.getDay()];
+        let dayFull = dayOfWeekFull[date.getDay()];
+        days.push(day);
+        daysFull.push(dayFull);
+        temps.push(Math.round(this.state.data.list[i].main.temp));
+        minTemps.push(Math.round(this.state.data.list[i].main.temp_min));
+        maxTemps.push(Math.round(this.state.data.list[i].main.temp_max));
+        c_humidity.push(Math.round(this.state.data.list[i].main.humidity));
+        c_pressure.push(Math.round(this.state.data.list[i].main.pressure));
+        c_wind.push(Math.round(this.state.data.list[i].wind.speed));
+        weather.push(this.state.data.list[i].weather[0].description);
+        icons.push(this.state.data.list[i].weather[0].icon)
+      }
+
+      this.setState({
+        days: [currentDay, ...days.slice(1)],
+        daysFull: [currentDayFull, ...daysFull.slice(1)],
+        temps: [currentTemp, ...temps.slice(1)],
+        minTemps: [currentMinTemp, ...minTemps.slice(1)],
+        maxTemps: [currentMaxTemp, ...maxTemps.slice(1)],
+        c_humidity: [currentHumidity, ...c_humidity.slice(1)],
+        c_pressure: [currentPressure, ...c_pressure.slice(1)],
+        c_wind: [currentWind, ...c_wind.slice(1)],
+        weather: [currentWeather, ...weather.slice(1)],
+        icons: [currentIcon, ...icons.slice(1)]
+      });
+    });
+  };
+
+  buildUrlApi = () => {
+    const location = encodeURIComponent(this.state.location);
+    const urlPrefix = "https://api.openweathermap.org/data/2.5/forecast?q=";
+    const urlSuffix = "&APPID=d94f810c218fa367514761ac7f7bc5bc&units=metric";
+
+    return [urlPrefix, location, urlSuffix].join("");
+  };
+
+  currentData = () => {
+    const list = this.state.data.list;
+    const nearestHr = this.computeNearestHr();
+
+    return list.find(e => new Date(e.dt_txt).getHours() === nearestHr);
+  };
+
+  computeNearestHr = () => {
+    const currentTimeInHrs = new Date().getHours();
+    const constHrs = [0, 3, 6, 9, 12, 15, 18, 21];
+    const differences = constHrs.map(e => Math.abs(e - currentTimeInHrs));
+    const indexofLowestDiff = differences.indexOf(Math.min(...differences));
+
+    return constHrs[indexofLowestDiff];
+  };
+
+
+  componentDidMount() {
+    this.fetchData();
+  }
+
+  changeLocation = e => {
     e.preventDefault();
-    const city = e.target.elements.city.value;
-    const country = e.target.elements.country.value;
-    const api_call = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city},${country}&appid=${API_KEY}`);
-    const data = await api_call.json();
-    console.log(data);
-    if (city && country) {
-      this.setState({
-        city: data.name,
-        country: data.country,
-        temperature: Math.round(data.list[0].main.temp),
-        max_temperature: Math.round(data.list[0].main.temp_max),
-        min_temperature: Math.round(data.list[0].main.temp_min),
-        description: data.list[0].weather[0].description,
-        wind: data.list[0].wind.speed,
-        humidity: data.list[0].main.humidity,
-        pressure: data.list[0].main.pressure,
-        icon:data.list[0].weather[0].icon,
-        error:''
-      });
-    } else {
-      this.setState({
-        error: "Please enter the values."
-      });
-    }
-  }
+    const inputLocation = this.locationInput.value;
+    this.setState(
+      {
+        location: inputLocation
+      },
+      () => {
+        this.fetchData();
+      }
+    );
+  };
+
+  setIndex = index => {
+    this.setState({
+      displayIndex: index
+    });
+  };
 
   render() {
-    const{city,country,description,icon,temperature,humidity,wind,pressure,error,max_temperature,min_temperature}=this.state;
+    const {
+      location,
+      days,
+      daysFull,
+      temps,
+      maxTemps,
+      minTemps,
+      c_humidity,
+      c_pressure,
+      c_wind,
+      weather,
+      icons,
+      displayIndex
+    } = this.state;
+
     return (
-      <div className="main">
-        <div className="title">
-          <Titles />
-        </div>
-        <div className="form">
-          <Form getWeather={this.getWeather} />
-        </div>
-        <div className="location-description">
-          <Location 
-          city={city}
-          country={country}
-          />
-          <Description
-          description={description}
-          />
-        </div>
-        <div className="temperature-details">
-          <WeatherData 
-            icon={icon} 
-            temperature={temperature} 
-            humidity={humidity}
-            wind={wind}
-            pressure={pressure}
-            error={error}
-          />
-        </div>
-        <div className="weather-hourly-details">
-          <HourlyDetails/>
-        </div>
-        <div className="five-day-weather">
-          <Link to="" style={{ textDecoration: 'none' }}>
-            <div className="day-weather-div">
-              <p className="day">Today</p>
-              <div className="icon"><Icon icon={icon} /></div>
-              <MaxMinTemp
-                max_temperature={max_temperature}
-                min_temperature={min_temperature}
-                />
+      <div>
+        <form onSubmit={this.changeLocation}>
+          <div className="inline-input">
+            {/* <i className="mdi mdi-magnify"></i> */}
+            <input
+              className="location-input"
+              defaultValue={location}
+              type="text"
+              ref={input => (this.locationInput = input)}
+            />
+          </div>
+        </form><hr />
+
+        <div className="main-display">
+          <div className="main-info">
+            <div className="temp-measurement">{temps[displayIndex]}</div>
+            <div className="temp-unit">°C</div>
+          </div>
+
+          <div className="sub-info">
+            <div className="sub-info-title">{daysFull[displayIndex]}</div><hr />
+
+            <div className="sub-info-text"><b>Description : </b>{weather[displayIndex]}</div>
+            <div className="sub-info-text"><b>Humidity : </b>{c_humidity[displayIndex]}%</div>
+            <div className="sub-info-text"><b>Pressure : </b>{c_pressure[displayIndex]} Pa</div>
+            <div className="sub-info-text"><b>Wind-Speed : </b>{c_wind[displayIndex]} km/s</div>
+
+            <div className="sub-info-text">
+              <span className="max-temp">
+                <i className="mdi mdi-arrow-up" />
+                Max.Temp. =
+                {maxTemps[displayIndex]}
+                °C
+              </span>
+              <span className="min-temp">
+                <i className="mdi mdi-arrow-down" />
+                Min.Temp. =
+                {minTemps[displayIndex]}
+                °C
+              </span>
             </div>
-          </Link>
-          <Link to="/day1" style={{ textDecoration: 'none' }}>
-            <div className="day-weather-div">
-              <p className="day">Sat</p>
-              <WeatherByDay/>
-            </div>
-          </Link>
-          <Link to="/day2" style={{ textDecoration: 'none' }}>
-            <div className="day-weather-div">
-              <p className="day">Sun</p>
-              <WeatherByDay/>
-            </div>
-          </Link>
-          <Link to="/day3" style={{ textDecoration: 'none' }}>
-            <div className="day-weather-div">
-              <p className="day">Mon</p>
-              <WeatherByDay/>
-            </div>
-          </Link>
-          <Link to="/day4" style={{ textDecoration: 'none' }}>
-            <div className="day-weather-div">
-              <p className="day">Tue</p>
-              <WeatherByDay/>
-            </div>
-          </Link>
+          </div>
+        </div><hr />
+
+        <div className="selection-panel">
+          <div className="selection-row">
+            {icons.map((item, index) => {
+              if (displayIndex === index) {
+                return (
+                  <div
+                    className="selection-icons selected"
+                    key={index + 1}
+                    onClick={() => this.setIndex(index)}
+                  >
+                    <i className={"mdi mdi-".concat(item)} />
+                  </div>
+                );
+              } else {
+                return (
+                  <div
+                    className="selection-icons"
+                    key={index + 1}
+                    onClick={() => this.setIndex(index)}
+                  >
+                    <i className={"mdi mdi-".concat(item)} />
+                  </div>
+                );
+              }
+            })}
+          </div>
+          <div className="selection-row">
+            {days.map((item, index) => {
+              if (displayIndex === index) {
+                return (
+                  <div
+                    className="selection-days selected"
+                    key={index + 1}
+                    onClick={() => this.setIndex(index)}
+                  >
+                    {item}
+                  </div>
+                );
+              } else {
+                return (
+                  <div
+                    className="selection-days"
+                    key={index + 1}
+                    onClick={() => this.setIndex(index)}
+                  >
+                    {item}
+                  </div>
+                );
+              }
+            })}
+          </div>
         </div>
       </div>
     );
   }
-};
-
+}
 export default App;
+
+ReactDOM.render(<App />, document.getElementById("root"));
