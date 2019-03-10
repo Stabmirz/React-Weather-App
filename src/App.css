@@ -188,7 +188,7 @@ hr {
 }
 
 .selected {
-    color: red;
+    color: #fff;
     transition: all .3s ease-in-out;
 }
 
